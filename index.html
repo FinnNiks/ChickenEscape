@@ -42,6 +42,7 @@
             text-align: center;
             color: white;
             border: 2px solid #fbbf24;
+            z-index: 10;
         }
         .btn {
             background: #fbbf24;
@@ -57,6 +58,7 @@
         .btn:active {
             transform: scale(0.95);
         }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -73,7 +75,13 @@
         <h1 class="text-4xl font-black mb-2 text-yellow-400">KITCHEN ESCAPE</h1>
         <p class="mb-4 italic">Don't end up on the menu!</p>
         <div id="menu-content">
-            <p class="text-sm mb-4">Use Arrow Keys or WASD to run away from the butchers!<br>Collect green seeds for a speed boost.</p>
+            <ul class="text-sm mb-4 text-left space-y-2 inline-block">
+                <li>🏃 <b>Move:</b> Arrow Keys or WASD</li>
+                <li>🌱 <b>Boost:</b> Green seeds for speed</li>
+                <li>🍳 <b>Bombs:</b> Step on pans to trigger explosion</li>
+                <li>⚠️ <b>Careful:</b> You have 0.6s to escape the blast!</li>
+            </ul>
+            <br>
             <div class="btn" onclick="startGame()">START RUNNING</div>
         </div>
     </div>
@@ -103,8 +111,10 @@
     let chicken = { x: 0, y: 0, radius: 18, baseSpeed: 5, speed: 5, angle: 0, boostTimer: 0 };
     let butchers = [];
     let boosters = [];
+    let bombs = [];
+    let explosions = [];
 
-    // Resize Handler - Make it fill the screen for a top-down arena
+    // Resize Handler
     function resize() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -116,9 +126,7 @@
     window.addEventListener('resize', resize);
     resize();
 
-    // Drawing Helpers
     function drawBackground() {
-        // Restaurant checkered floor
         const tileSize = 60;
         for (let x = 0; x < canvas.width; x += tileSize) {
             for (let y = 0; y < canvas.height; y += tileSize) {
@@ -133,7 +141,7 @@
         ctx.translate(chicken.x, chicken.y);
         ctx.rotate(chicken.angle);
 
-        // Legs (animated)
+        // Legs
         if (keys['arrowup'] || keys['arrowdown'] || keys['arrowleft'] || keys['arrowright'] || keys['w'] || keys['a'] || keys['s'] || keys['d']) {
             const walkCycle = Math.sin(frameCount * 0.5) * 10;
             ctx.strokeStyle = '#fbbf24';
@@ -174,7 +182,6 @@
         ctx.arc(10, 6, 2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Boost Aura
         if (chicken.boostTimer > 0) {
             ctx.strokeStyle = 'rgba(34, 197, 94, 0.5)';
             ctx.lineWidth = 4;
@@ -182,7 +189,6 @@
             ctx.arc(0, 0, 25 + Math.sin(frameCount * 0.2) * 5, 0, Math.PI * 2);
             ctx.stroke();
         }
-
         ctx.restore();
     }
 
@@ -190,61 +196,72 @@
         ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(b.angle);
-
-        // Knife
         ctx.fillStyle = '#94a3b8';
         ctx.beginPath();
-        ctx.moveTo(15, 10);
-        ctx.lineTo(35, 10);
-        ctx.lineTo(40, 15);
-        ctx.lineTo(15, 20);
+        ctx.moveTo(15, 10); ctx.lineTo(35, 10); ctx.lineTo(40, 15); ctx.lineTo(15, 20);
         ctx.fill();
-        // Handle
         ctx.fillStyle = '#451a03';
         ctx.fillRect(10, 10, 10, 10);
-
-        // Body
-        ctx.fillStyle = '#ef4444'; // Red apron
-        ctx.beginPath();
-        ctx.arc(0, 0, b.radius, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Head
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath(); ctx.arc(0, 0, b.radius, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#fde047';
-        ctx.beginPath();
-        ctx.arc(5, 0, 12, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Chef hat
+        ctx.beginPath(); ctx.arc(5, 0, 12, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(-2, 0, 10, 0, Math.PI * 2);
-        ctx.fill();
-
+        ctx.beginPath(); ctx.arc(-2, 0, 10, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
     }
 
     function drawBooster(b) {
         ctx.save();
         ctx.translate(b.x, b.y);
-        
-        // Glow
         ctx.fillStyle = 'rgba(34, 197, 94, 0.3)';
-        ctx.beginPath();
-        ctx.arc(0, 0, b.radius + Math.sin(frameCount * 0.1) * 3, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Seed
+        ctx.beginPath(); ctx.arc(0, 0, b.radius + Math.sin(frameCount * 0.1) * 3, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#22c55e';
-        ctx.beginPath();
-        ctx.ellipse(0, 0, b.radius, b.radius * 0.6, Math.PI/4, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.ellipse(0, 0, b.radius, b.radius * 0.6, Math.PI/4, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
 
+    function drawBomb(b) {
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        
+        // Flashing effect if triggered
+        if (b.triggered) {
+            const flash = Math.sin(frameCount * 0.5) > 0;
+            ctx.fillStyle = flash ? 'rgba(239, 68, 68, 0.4)' : 'rgba(239, 68, 68, 0.1)';
+            ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI * 2); ctx.fill();
+        }
+
+        // Frying Pan Bomb
+        ctx.fillStyle = '#334155';
+        ctx.beginPath(); ctx.arc(0, 0, b.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.fillRect(0, -2, 30, 4); // Handle
+        
+        if (b.triggered) {
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath(); ctx.arc(0, 0, b.radius * 0.6, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    function drawExplosion(e) {
+        const progress = e.timer / e.maxTimer;
+        const radius = e.radius * (1 - progress);
+        const opacity = progress;
+
+        ctx.save();
+        ctx.beginPath();
+        const gradient = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, radius);
+        gradient.addColorStop(0, `rgba(251, 191, 36, ${opacity})`);
+        gradient.addColorStop(0.6, `rgba(239, 68, 68, ${opacity})`);
+        gradient.addColorStop(1, `rgba(0, 0, 0, 0)`);
+        ctx.fillStyle = gradient;
+        ctx.arc(e.x, e.y, radius, 0, Math.PI * 2);
+        ctx.fill();
         ctx.restore();
     }
 
     function spawnButcher() {
-        // Spawn outside the screen limits so they walk in
         let x, y;
         if (Math.random() < 0.5) {
             x = Math.random() < 0.5 ? -50 : canvas.width + 50;
@@ -253,24 +270,21 @@
             x = Math.random() * canvas.width;
             y = Math.random() < 0.5 ? -50 : canvas.height + 50;
         }
-
-        // Speed scales up gradually with the survival score
         let baseEnemySpeed = 2.5 + (score * 0.05);
-        
-        butchers.push({
-            x: x,
-            y: y,
-            radius: 20,
-            speed: Math.min(baseEnemySpeed, 4.5), // Cap maximum speed
-            angle: 0
-        });
+        butchers.push({ x, y, radius: 20, speed: Math.min(baseEnemySpeed, 4.5), angle: 0 });
     }
 
     function spawnBooster() {
-        boosters.push({
-            x: 50 + Math.random() * (canvas.width - 100),
-            y: 50 + Math.random() * (canvas.height - 100),
-            radius: 10
+        boosters.push({ x: 50 + Math.random() * (canvas.width - 100), y: 50 + Math.random() * (canvas.height - 100), radius: 10 });
+    }
+
+    function spawnBomb() {
+        bombs.push({ 
+            x: 50 + Math.random() * (canvas.width - 100), 
+            y: 50 + Math.random() * (canvas.height - 100), 
+            radius: 12, 
+            triggered: false, 
+            timer: 36 // Slightly longer fuse: 0.6 seconds at 60fps
         });
     }
 
@@ -278,7 +292,6 @@
         if (!isGameRunning) return;
         frameCount++;
 
-        // Chicken Movement based on Input Map
         let dx = 0; let dy = 0;
         if (keys['arrowup'] || keys['w']) dy -= 1;
         if (keys['arrowdown'] || keys['s']) dy += 1;
@@ -286,14 +299,11 @@
         if (keys['arrowright'] || keys['d']) dx += 1;
 
         if (dx !== 0 || dy !== 0) {
-            // Normalize to prevent faster diagonal movement
             const length = Math.sqrt(dx * dx + dy * dy);
-            dx /= length;
-            dy /= length;
+            dx /= length; dy /= length;
             chicken.angle = Math.atan2(dy, dx);
         }
 
-        // Apply Speed Boost effect
         if (chicken.boostTimer > 0) {
             chicken.boostTimer--;
             chicken.speed = chicken.baseSpeed * 1.6;
@@ -303,65 +313,92 @@
 
         chicken.x += dx * chicken.speed;
         chicken.y += dy * chicken.speed;
-
-        // Constrain chicken within screen boundaries
         chicken.x = Math.max(chicken.radius, Math.min(canvas.width - chicken.radius, chicken.x));
         chicken.y = Math.max(chicken.radius, Math.min(canvas.height - chicken.radius, chicken.y));
 
-        // Score logic: increment automatically as you survive
         if (frameCount % 60 === 0) {
             score++;
             scoreDisplay.innerText = score;
         }
 
-        // Spawning logic (gets harder as score increases)
-        let spawnRate = Math.max(30, 120 - score);
-        if (frameCount % spawnRate === 0) spawnButcher();
-        
-        if (frameCount % 300 === 0) spawnBooster(); // About every 5 seconds
+        if (frameCount % Math.max(30, 120 - score) === 0) spawnButcher();
+        if (frameCount % 400 === 0) spawnBooster();
+        if (frameCount % 500 === 0) spawnBomb();
 
-        // Update Butchers & check collisions
+        // Butchers
         for (let i = butchers.length - 1; i >= 0; i--) {
             let b = butchers[i];
-            
-            // Vector calculation to move towards chicken
             let bdx = chicken.x - b.x;
             let bdy = chicken.y - b.y;
             let dist = Math.sqrt(bdx * bdx + bdy * bdy);
-            
             b.angle = Math.atan2(bdy, bdx);
             if (dist > 0) {
                 b.x += (bdx / dist) * b.speed;
                 b.y += (bdy / dist) * b.speed;
             }
+            if (dist < chicken.radius + b.radius - 5) gameOver();
+        }
 
-            // Game Over Collision
-            if (dist < chicken.radius + b.radius - 5) {
-                gameOver();
+        // Boosters
+        for (let i = boosters.length - 1; i >= 0; i--) {
+            let b = boosters[i];
+            let dist = Math.sqrt((chicken.x - b.x)**2 + (chicken.y - b.y)**2);
+            if (dist < chicken.radius + b.radius) {
+                boosters.splice(i, 1);
+                chicken.boostTimer = 180;
+                score += 5;
+                scoreDisplay.innerText = score;
             }
         }
 
-        // Update Boosters & check collection
-        for (let i = boosters.length - 1; i >= 0; i--) {
-            let b = boosters[i];
-            let bdx = chicken.x - b.x;
-            let bdy = chicken.y - b.y;
-            let dist = Math.sqrt(bdx * bdx + bdy * bdy);
-
-            if (dist < chicken.radius + b.radius) {
-                boosters.splice(i, 1);
-                chicken.boostTimer = 180; // 3 seconds of speed boost
-                score += 5; // Extra points for collecting
-                scoreDisplay.innerText = score;
+        // Bombs
+        for (let i = bombs.length - 1; i >= 0; i--) {
+            let b = bombs[i];
+            let dist = Math.sqrt((chicken.x - b.x)**2 + (chicken.y - b.y)**2);
+            
+            if (!b.triggered && dist < chicken.radius + b.radius) {
+                b.triggered = true;
             }
+
+            if (b.triggered) {
+                b.timer--;
+                if (b.timer <= 0) {
+                    explosions.push({ x: b.x, y: b.y, radius: 150, timer: 20, maxTimer: 20 });
+                    bombs.splice(i, 1);
+                }
+            }
+        }
+
+        // Explosions
+        for (let i = explosions.length - 1; i >= 0; i--) {
+            let e = explosions[i];
+            e.timer--;
+
+            // CHECK RADIUS REDUCED: Chicken only dies if closer to the center (60% of visual radius)
+            let distC = Math.sqrt((chicken.x - e.x)**2 + (chicken.y - e.y)**2);
+            if (distC < e.radius * 0.6) gameOver();
+
+            // Kill butchers in blast (Still uses 100% of radius for them)
+            for (let j = butchers.length - 1; j >= 0; j--) {
+                let b = butchers[j];
+                let distB = Math.sqrt((b.x - e.x)**2 + (b.y - e.y)**2);
+                if (distB < e.radius) {
+                    butchers.splice(j, 1);
+                    score += 10;
+                    scoreDisplay.innerText = score;
+                }
+            }
+
+            if (e.timer <= 0) explosions.splice(i, 1);
         }
     }
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         drawBackground();
-        
         boosters.forEach(drawBooster);
+        bombs.forEach(drawBomb);
+        explosions.forEach(drawExplosion);
         butchers.forEach(drawButcher);
         drawChicken();
     }
@@ -369,18 +406,13 @@
     function gameLoop() {
         update();
         draw();
-        if (isGameRunning) {
-            requestAnimationFrame(gameLoop);
-        }
+        if (isGameRunning) requestAnimationFrame(gameLoop);
     }
 
     function startGame() {
-        score = 0;
-        frameCount = 0;
-        butchers = [];
-        boosters = [];
-        chicken.x = canvas.width / 2;
-        chicken.y = canvas.height / 2;
+        score = 0; frameCount = 0;
+        butchers = []; boosters = []; bombs = []; explosions = [];
+        chicken.x = canvas.width / 2; chicken.y = canvas.height / 2;
         chicken.boostTimer = 0;
         scoreDisplay.innerText = score;
         isGameRunning = true;
@@ -395,21 +427,13 @@
             localStorage.setItem('chicken_td_highscore', highScore);
             highScoreDisplay.innerText = highScore;
         }
-        
         menu.classList.remove('hidden');
         menuContent.innerHTML = `
-            <p class="text-xl mb-2 text-red-500 font-bold">CAUGHT!</p>
+            <p class="text-xl mb-2 text-red-500 font-bold">GAME OVER</p>
             <p class="mb-4 text-white">Score: ${score}</p>
-            <p class="text-sm mb-4 text-gray-300">Use Arrow Keys or WASD to run away.<br>Collect green seeds for a speed boost.</p>
             <div class="btn" onclick="startGame()">PLAY AGAIN</div>
         `;
     }
-
-    // Add hidden class helper
-    const style = document.createElement('style');
-    style.innerHTML = '.hidden { display: none !important; }';
-    document.head.appendChild(style);
-
 </script>
 </body>
 </html>
