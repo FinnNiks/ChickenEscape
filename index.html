@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Kitchen Escape: Level Up!</title>
+    <title>Kitchen Escape: Pro Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -45,29 +45,60 @@
         }
         #menu {
             position: absolute;
-            background: rgba(0, 0, 0, 0.9);
-            padding: 2.5rem;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 2rem;
             border-radius: 1rem;
             text-align: center;
             color: white;
             border: 3px solid #fbbf24;
             z-index: 20;
-            max-width: 90%;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
         }
         .btn {
             background: #fbbf24;
             color: #000;
-            padding: 12px 30px;
+            padding: 10px 20px;
             border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 15px;
-            display: inline-block;
             transition: all 0.2s;
             text-transform: uppercase;
+            border: none;
         }
-        .btn:hover { background: #f59e0b; transform: scale(1.05); }
-        .btn:active { transform: scale(0.95); }
+        .btn:hover:not(:disabled) { background: #f59e0b; transform: scale(1.05); }
+        .btn:disabled { background: #4b5563; cursor: not-allowed; opacity: 0.6; }
+        
+        .skin-card {
+            border: 2px solid #374151;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .skin-card.selected { border-color: #fbbf24; background: rgba(251, 191, 36, 0.1); }
+        .skin-card.locked { opacity: 0.5; cursor: not-allowed; }
+        
+        .slider {
+            width: 100%;
+            height: 8px;
+            background: #374151;
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #fbbf24;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
         .hidden { display: none !important; }
         
         #choice-modal {
@@ -94,27 +125,63 @@
 
     <div id="level-indicator">Level 1: Kitchen</div>
 
-    <!-- Choice Modal for Level Transition -->
     <div id="choice-modal" class="hidden">
         <h2 class="text-2xl font-bold text-green-400 mb-2">MILESTONE REACHED!</h2>
-        <p id="choice-text" class="mb-4">You have enough points to advance.</p>
+        <p id="choice-text" class="mb-4"></p>
         <div class="flex gap-4 justify-center">
             <div class="btn !bg-gray-600 !text-white" onclick="stayInLevel()">Stay Here</div>
-            <div class="btn" id="advance-btn" onclick="advanceLevel()">Go to Next Level</div>
+            <div class="btn" id="advance-btn">Go to Next Level</div>
         </div>
     </div>
 
+    <!-- MAIN MENU -->
     <div id="menu">
-        <h1 id="menu-title" class="text-4xl font-black mb-2 text-yellow-400">KITCHEN ESCAPE</h1>
-        <div id="menu-content">
-            <ul class="text-sm mb-4 text-left space-y-2 inline-block">
-                <li>🏃 <b>Move:</b> Arrows/WASD</li>
-                <li>🏆 <b>Goal:</b> 220 Points to Win & Unlock Reward</li>
-                <li>🎯 <b>Levels:</b> Advance at 70 and 130 pts</li>
-                <li>🍳 <b>Bombs:</b> Blow up butchers (Watch the radius!)</li>
-            </ul>
-            <br>
-            <div class="btn" onclick="startGame()">Start Running</div>
+        <h1 id="menu-title" class="text-3xl font-black mb-4 text-yellow-400">KITCHEN ESCAPE</h1>
+        
+        <div id="settings-panel" class="space-y-6">
+            <!-- Difficulty -->
+            <div class="text-left space-y-4">
+                <h3 class="text-sm font-bold uppercase text-gray-400">Difficulty Tuning</h3>
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span>Chicken Speed</span>
+                        <span id="chickenSpeedVal">5.0</span>
+                    </div>
+                    <input type="range" min="3" max="8" step="0.5" value="5" class="slider" id="chickenSpeedRange">
+                </div>
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span>Butcher Base Speed</span>
+                        <span id="butcherSpeedVal">2.5</span>
+                    </div>
+                    <input type="range" min="1" max="5" step="0.5" value="2.5" class="slider" id="butcherSpeedRange">
+                </div>
+            </div>
+
+            <!-- Skin Selection -->
+            <div class="text-left space-y-2">
+                <h3 class="text-sm font-bold uppercase text-gray-400">Choose Costume</h3>
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="skin-card selected" id="skin-default" onclick="selectSkin('default')">
+                        <div class="text-[10px] font-bold">DEFAULT</div>
+                        <div class="text-2xl">🐔</div>
+                    </div>
+                    <div class="skin-card locked" id="skin-cat" onclick="selectSkin('cat')">
+                        <div class="text-[10px] font-bold">CAT</div>
+                        <div class="text-2xl">🐱</div>
+                        <div id="lock-cat" class="absolute inset-0 flex items-center justify-center bg-black/60 rounded-md text-xs">🔒</div>
+                    </div>
+                    <div class="skin-card locked" id="skin-aqua" onclick="selectSkin('aqua')">
+                        <div class="text-[10px] font-bold">AQUA</div>
+                        <div class="text-2xl">🧜‍♂️</div>
+                        <div id="lock-aqua" class="absolute inset-0 flex items-center justify-center bg-black/60 rounded-md text-xs">🔒</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-gray-800">
+                <button class="btn w-full py-3" onclick="startGame()">Start Running</button>
+            </div>
         </div>
     </div>
 </div>
@@ -126,31 +193,70 @@
     const highScoreDisplay = document.getElementById('highScoreDisplay');
     const levelIndicator = document.getElementById('level-indicator');
     const menu = document.getElementById('menu');
-    const menuContent = document.getElementById('menu-content');
     const choiceModal = document.getElementById('choice-modal');
 
-    // Game Config
+    // Persistence & State
+    let wins = parseInt(localStorage.getItem('kitchen_escape_wins') || '0');
+    let highScore = parseInt(localStorage.getItem('chicken_td_highscore') || '0');
+    highScoreDisplay.innerText = highScore;
+
     let isGameRunning = false;
     let isPaused = false;
     let score = 0;
-    let highScore = localStorage.getItem('chicken_td_highscore') || 0;
-    highScoreDisplay.innerText = highScore;
     let frameCount = 0;
     let currentLevel = 1;
-    let hasWon = false;
-    let skinUnlocked = false;
+    let hasWonThisSession = false;
+
+    // Config Values
+    let selectedSkin = 'default';
+    let baseChickenSpeed = 5.0;
+    let baseButcherSpeed = 2.5;
 
     const LEVELS = {
-        1: { name: "Kitchen", colorA: "#cbd5e1", colorB: "#f8fafc", threshold: 70, enemyBase: 2.5 },
-        2: { name: "Dining Room", colorA: "#92400e", colorB: "#78350f", threshold: 130, enemyBase: 3.5 },
-        3: { name: "Freezer", colorA: "#bae6fd", colorB: "#7dd3fc", threshold: 220, enemyBase: 4.5 }
+        1: { name: "Kitchen", colorA: "#cbd5e1", colorB: "#f8fafc", threshold: 70 },
+        2: { name: "Dining Room", colorA: "#92400e", colorB: "#78350f", threshold: 130 },
+        3: { name: "Freezer", colorA: "#bae6fd", colorB: "#7dd3fc", threshold: 220 }
     };
+
+    // UI Listeners
+    const chickenSlider = document.getElementById('chickenSpeedRange');
+    const butcherSlider = document.getElementById('butcherSpeedRange');
+    
+    chickenSlider.oninput = function() { 
+        baseChickenSpeed = parseFloat(this.value);
+        document.getElementById('chickenSpeedVal').innerText = baseChickenSpeed.toFixed(1);
+    };
+    butcherSlider.oninput = function() { 
+        baseButcherSpeed = parseFloat(this.value);
+        document.getElementById('butcherSpeedVal').innerText = baseButcherSpeed.toFixed(1);
+    };
+
+    function updateSkinUnlocks() {
+        if (wins >= 1) {
+            document.getElementById('skin-cat').classList.remove('locked');
+            document.getElementById('lock-cat').classList.add('hidden');
+        }
+        if (wins >= 2) {
+            document.getElementById('skin-aqua').classList.remove('locked');
+            document.getElementById('lock-aqua').classList.add('hidden');
+        }
+    }
+    updateSkinUnlocks();
+
+    function selectSkin(skin) {
+        if (skin === 'cat' && wins < 1) return;
+        if (skin === 'aqua' && wins < 2) return;
+        
+        selectedSkin = skin;
+        document.querySelectorAll('.skin-card').forEach(c => c.classList.remove('selected'));
+        document.getElementById('skin-' + skin).classList.add('selected');
+    }
 
     const keys = {};
     window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
     window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-    let chicken = { x: 0, y: 0, radius: 18, baseSpeed: 5, speed: 5, angle: 0, boostTimer: 0 };
+    let chicken = { x: 0, y: 0, radius: 18, speed: 5, angle: 0, boostTimer: 0 };
     let butchers = [];
     let boosters = [];
     let bombs = [];
@@ -183,75 +289,64 @@
         ctx.translate(chicken.x, chicken.y);
         ctx.rotate(chicken.angle);
 
+        // Movement animation
+        const isMoving = keys['arrowup'] || keys['arrowdown'] || keys['arrowleft'] || keys['arrowright'] || keys['w'] || keys['a'] || keys['s'] || keys['d'];
+        const walkCycle = isMoving ? Math.sin(frameCount * 0.5) * 10 : 0;
+
         // Legs
-        if (keys['arrowup'] || keys['arrowdown'] || keys['arrowleft'] || keys['arrowright'] || keys['w'] || keys['a'] || keys['s'] || keys['d']) {
-            const walkCycle = Math.sin(frameCount * 0.5) * 10;
-            ctx.strokeStyle = '#fbbf24';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(0, -10); ctx.lineTo(-15 + walkCycle, -15);
-            ctx.moveTo(0, 10); ctx.lineTo(-15 - walkCycle, 15);
-            ctx.stroke();
-        }
+        ctx.strokeStyle = (selectedSkin === 'aqua') ? '#0ea5e9' : '#fbbf24';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, -10); ctx.lineTo(-15 + walkCycle, -15);
+        ctx.moveTo(0, 10); ctx.lineTo(-15 - walkCycle, 15);
+        ctx.stroke();
 
-        if (skinUnlocked) {
-            // CAT COSTUME BODY (Black cat)
+        if (selectedSkin === 'cat') {
+            // CAT SUIT
             ctx.fillStyle = '#1a1a1a';
-            ctx.beginPath();
-            ctx.ellipse(0, 0, 22, 16, 0, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.ellipse(0, 0, 22, 16, 0, 0, Math.PI * 2); ctx.fill();
             // Tail
-            ctx.strokeStyle = '#1a1a1a';
-            ctx.lineWidth = 6;
-            ctx.beginPath();
-            ctx.moveTo(-18, 0);
-            ctx.quadraticCurveTo(-30, Math.sin(frameCount*0.1)*10, -35, 0);
-            ctx.stroke();
-            // Ears on the suit
-            ctx.beginPath();
-            ctx.moveTo(8, -12); ctx.lineTo(15, -20); ctx.lineTo(18, -8);
-            ctx.moveTo(8, 12); ctx.lineTo(15, 20); ctx.lineTo(18, 8);
-            ctx.fill();
+            ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 6; ctx.beginPath();
+            ctx.moveTo(-18, 0); ctx.quadraticCurveTo(-30, Math.sin(frameCount*0.1)*10, -35, 0); ctx.stroke();
+            // Ears
+            ctx.beginPath(); ctx.moveTo(8, -12); ctx.lineTo(15, -20); ctx.lineTo(18, -8);
+            ctx.moveTo(8, 12); ctx.lineTo(15, 20); ctx.lineTo(18, 8); ctx.fill();
+        } else if (selectedSkin === 'aqua') {
+            // AQUA MAN SUIT
+            // Scaly Green Body
+            ctx.fillStyle = '#166534';
+            ctx.beginPath(); ctx.ellipse(0, 0, 20, 15, 0, 0, Math.PI * 2); ctx.fill();
+            // Gold belt/detail
+            ctx.strokeStyle = '#eab308'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(0, 15); ctx.stroke();
+            // Trident handle on back
+            ctx.strokeStyle = '#fde047'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-15, -15); ctx.lineTo(5, 15); ctx.stroke();
         } else {
-            // NORMAL CHICKEN BODY
+            // DEFAULT
             ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.ellipse(0, 0, 20, 15, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = '#e2e8f0';
-            ctx.lineWidth = 2;
-            ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(0, 0, 20, 15, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2; ctx.stroke();
         }
 
-        // CHICKEN HEAD (Always stays chicken)
-        // Comb
+        // CHICKEN HEAD (Signature)
         ctx.fillStyle = '#ef4444';
-        ctx.beginPath();
-        ctx.arc(-10, 0, 6, 0, Math.PI * 2);
-        ctx.fill();
-        // Beak
-        ctx.fillStyle = '#fbbf24';
-        ctx.beginPath();
-        ctx.moveTo(15, -5); ctx.lineTo(25, 0); ctx.lineTo(15, 5);
-        ctx.fill();
-        // Eyes
+        ctx.beginPath(); ctx.arc(-10, 0, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = (selectedSkin === 'aqua') ? '#facc15' : '#fbbf24';
+        ctx.beginPath(); ctx.moveTo(15, -5); ctx.lineTo(25, 0); ctx.lineTo(15, 5); ctx.fill();
         ctx.fillStyle = '#000';
         ctx.beginPath(); ctx.arc(10, -6, 2, 0, Math.PI * 2); ctx.arc(10, 6, 2, 0, Math.PI * 2); ctx.fill();
 
         if (chicken.boostTimer > 0) {
-            ctx.strokeStyle = 'rgba(34, 197, 94, 0.5)';
+            ctx.strokeStyle = (selectedSkin === 'aqua') ? 'rgba(14, 165, 233, 0.5)' : 'rgba(34, 197, 94, 0.5)';
             ctx.lineWidth = 4;
             ctx.beginPath(); ctx.arc(0, 0, 25 + Math.sin(frameCount * 0.2) * 5, 0, Math.PI * 2); ctx.stroke();
         }
         ctx.restore();
     }
 
+    // Standard drawing functions
     function drawButcher(b) {
-        ctx.save();
-        ctx.translate(b.x, b.y);
-        ctx.rotate(b.angle);
-        ctx.fillStyle = '#94a3b8';
-        ctx.beginPath(); ctx.moveTo(15, 10); ctx.lineTo(35, 10); ctx.lineTo(40, 15); ctx.lineTo(15, 20); ctx.fill();
+        ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.angle);
+        ctx.fillStyle = '#94a3b8'; ctx.beginPath(); ctx.moveTo(15, 10); ctx.lineTo(35, 10); ctx.lineTo(40, 15); ctx.lineTo(15, 20); ctx.fill();
         ctx.fillStyle = '#451a03'; ctx.fillRect(10, 10, 10, 10);
         ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(0, 0, b.radius, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#fde047'; ctx.beginPath(); ctx.arc(5, 0, 12, 0, Math.PI * 2); ctx.fill();
@@ -260,18 +355,16 @@
     }
 
     function drawBooster(b) {
-        ctx.save();
-        ctx.translate(b.x, b.y);
-        ctx.fillStyle = 'rgba(34, 197, 94, 0.3)';
+        ctx.save(); ctx.translate(b.x, b.y);
+        ctx.fillStyle = (selectedSkin === 'aqua') ? 'rgba(14, 165, 233, 0.3)' : 'rgba(34, 197, 94, 0.3)';
         ctx.beginPath(); ctx.arc(0, 0, b.radius + Math.sin(frameCount * 0.1) * 3, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#22c55e';
+        ctx.fillStyle = (selectedSkin === 'aqua') ? '#0ea5e9' : '#22c55e';
         ctx.beginPath(); ctx.ellipse(0, 0, b.radius, b.radius * 0.6, Math.PI/4, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
     }
 
     function drawBomb(b) {
-        ctx.save();
-        ctx.translate(b.x, b.y);
+        ctx.save(); ctx.translate(b.x, b.y);
         if (b.triggered) {
             const flash = Math.sin(frameCount * 0.5) > 0;
             ctx.fillStyle = flash ? 'rgba(239, 68, 68, 0.4)' : 'rgba(239, 68, 68, 0.1)';
@@ -279,25 +372,20 @@
         }
         ctx.fillStyle = '#334155'; ctx.beginPath(); ctx.arc(0, 0, b.radius, 0, Math.PI * 2); ctx.fill();
         ctx.fillRect(0, -2, 30, 4);
-        if (b.triggered) {
-            ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(0, 0, b.radius * 0.6, 0, Math.PI * 2); ctx.fill();
-        }
+        if (b.triggered) { ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(0, 0, b.radius * 0.6, 0, Math.PI * 2); ctx.fill(); }
         ctx.restore();
     }
 
     function drawExplosion(e) {
         const progress = e.timer / e.maxTimer;
         const radius = e.radius * (1 - progress);
-        const opacity = progress;
         ctx.save();
         ctx.beginPath();
         const gradient = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, radius);
-        gradient.addColorStop(0, `rgba(251, 191, 36, ${opacity})`);
-        gradient.addColorStop(0.6, `rgba(239, 68, 68, ${opacity})`);
+        gradient.addColorStop(0, `rgba(251, 191, 36, ${progress})`);
+        gradient.addColorStop(0.6, `rgba(239, 68, 68, ${progress})`);
         gradient.addColorStop(1, `rgba(0, 0, 0, 0)`);
-        ctx.fillStyle = gradient;
-        ctx.arc(e.x, e.y, radius, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillStyle = gradient; ctx.arc(e.x, e.y, radius, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
     }
 
@@ -310,15 +398,14 @@
             x = Math.random() * canvas.width;
             y = Math.random() < 0.5 ? -50 : canvas.height + 50;
         }
-        let speed = LEVELS[currentLevel].enemyBase + (score * 0.02);
-        butchers.push({ x, y, radius: 20, speed: Math.min(speed, 6), angle: 0 });
+        let speed = baseButcherSpeed + (currentLevel * 0.5) + (score * 0.02);
+        butchers.push({ x, y, radius: 20, speed: Math.min(speed, 7), angle: 0 });
     }
 
     function update() {
         if (!isGameRunning || isPaused) return;
         frameCount++;
 
-        // Input
         let dx = 0; let dy = 0;
         if (keys['arrowup'] || keys['w']) dy -= 1;
         if (keys['arrowdown'] || keys['s']) dy += 1;
@@ -331,7 +418,7 @@
             chicken.angle = Math.atan2(dy, dx);
         }
 
-        chicken.speed = (chicken.boostTimer > 0) ? chicken.baseSpeed * 1.6 : chicken.baseSpeed;
+        chicken.speed = (chicken.boostTimer > 0) ? baseChickenSpeed * 1.6 : baseChickenSpeed;
         if (chicken.boostTimer > 0) chicken.boostTimer--;
 
         chicken.x += dx * chicken.speed;
@@ -340,18 +427,15 @@
         chicken.y = Math.max(chicken.radius, Math.min(canvas.height - chicken.radius, chicken.y));
 
         if (frameCount % 60 === 0) {
-            score++;
-            scoreDisplay.innerText = score;
+            score++; scoreDisplay.innerText = score;
             checkLevelProgress();
         }
 
-        // Spawning
-        let spawnRate = Math.max(20, 100 - (currentLevel * 15) - (score * 0.1));
+        let spawnRate = Math.max(15, 100 - (currentLevel * 20) - (score * 0.1));
         if (frameCount % Math.floor(spawnRate) === 0) spawnButcher();
         if (frameCount % 400 === 0) boosters.push({ x: 50+Math.random()*(canvas.width-100), y: 50+Math.random()*(canvas.height-100), radius: 10 });
         if (frameCount % 500 === 0) bombs.push({ x: 50+Math.random()*(canvas.width-100), y: 50+Math.random()*(canvas.height-100), radius: 12, triggered: false, timer: 36 });
 
-        // Collisions
         butchers.forEach(b => {
             let bdx = chicken.x - b.x; let bdy = chicken.y - b.y; let dist = Math.sqrt(bdx*bdx + bdy*bdy);
             b.angle = Math.atan2(bdy, bdx);
@@ -379,12 +463,12 @@
         explosions.forEach((e, i) => {
             e.timer--;
             if (Math.sqrt((chicken.x-e.x)**2 + (chicken.y-e.y)**2) < e.radius * 0.6) gameOver();
-            butchers.forEach((b, j) => {
-                if (Math.sqrt((b.x-e.x)**2 + (b.y-e.y)**2) < e.radius) {
+            for(let j=butchers.length-1; j>=0; j--) {
+                if (Math.sqrt((butchers[j].x-e.x)**2 + (butchers[j].y-e.y)**2) < e.radius) {
                     butchers.splice(j, 1); score += 10; scoreDisplay.innerText = score;
                     checkLevelProgress();
                 }
-            });
+            }
             if (e.timer <= 0) explosions.splice(i, 1);
         });
     }
@@ -392,45 +476,44 @@
     function checkLevelProgress() {
         if (score >= LEVELS[1].threshold && currentLevel === 1) showChoice(2);
         if (score >= LEVELS[2].threshold && currentLevel === 2) showChoice(3);
-        if (score >= LEVELS[3].threshold && !hasWon) winGame();
+        if (score >= LEVELS[3].threshold && !hasWonThisSession) winGame();
     }
 
     function showChoice(targetLevel) {
         if (isPaused) return;
         isPaused = true;
         choiceModal.classList.remove('hidden');
-        document.getElementById('choice-text').innerText = `You have ${score} points! Advance to Level ${targetLevel}: ${LEVELS[targetLevel].name}?`;
+        document.getElementById('choice-text').innerText = `MILESTONE! Advance to ${LEVELS[targetLevel].name}?`;
         document.getElementById('advance-btn').onclick = () => advanceLevel(targetLevel);
     }
 
     function advanceLevel(target) {
-        currentLevel = target;
-        isPaused = false;
+        currentLevel = target; isPaused = false;
         choiceModal.classList.add('hidden');
         levelIndicator.innerText = `Level ${currentLevel}: ${LEVELS[currentLevel].name}`;
-        // Clear area around chicken so they don't die instantly
         butchers = butchers.filter(b => Math.sqrt((chicken.x-b.x)**2 + (chicken.y-b.y)**2) > 300);
     }
 
-    function stayInLevel() {
-        isPaused = false;
-        choiceModal.classList.add('hidden');
-    }
+    function stayInLevel() { isPaused = false; choiceModal.classList.add('hidden'); }
 
     function winGame() {
-        hasWon = true;
-        skinUnlocked = true;
+        hasWonThisSession = true;
+        wins++;
+        localStorage.setItem('kitchen_escape_wins', wins);
+        updateSkinUnlocks();
         isGameRunning = false;
         menu.classList.remove('hidden');
-        document.getElementById('menu-title').innerText = "🎉 YOU ESCAPED! 🎉";
-        document.getElementById('menu-title').className = "text-4xl font-black mb-2 text-green-400";
-        menuContent.innerHTML = `
-            <div class="mb-4">
-                <p class="text-xl text-white font-bold">Total Score: ${score}</p>
-                <p class="text-yellow-400 mt-2 font-bold italic">REWARD UNLOCKED: "Cat-Chicken" Costume</p>
-                <div class="bg-gray-800 p-4 rounded-lg mt-2 text-xs">You successfully survived the Freezer and put on your stealth disguise!</div>
+        document.getElementById('menu-title').innerText = "🏆 MISSION COMPLETE! 🏆";
+        document.getElementById('menu-title').className = "text-3xl font-black mb-4 text-green-400";
+        // Update menu content to reflect victory
+        document.getElementById('settings-panel').innerHTML = `
+            <div class="bg-green-900/40 p-4 rounded-lg border border-green-500 mb-4">
+                <p class="font-bold">TOTAL SCORE: ${score}</p>
+                <p class="text-sm mt-1">Wins Tracked: ${wins}</p>
+                ${wins === 1 ? '<p class="text-yellow-400 text-xs mt-2 italic">CAT COSTUME UNLOCKED!</p>' : ''}
+                ${wins === 2 ? '<p class="text-blue-400 text-xs mt-2 italic">AQUA CLUCK UNLOCKED!</p>' : ''}
             </div>
-            <div class="btn" onclick="startGame()">Play with New Skin</div>
+            <button class="btn w-full py-3" onclick="location.reload()">Back to Menu</button>
         `;
     }
 
@@ -445,13 +528,12 @@
     }
 
     function gameLoop() {
-        update();
-        draw();
+        update(); draw();
         if (isGameRunning) requestAnimationFrame(gameLoop);
     }
 
     function startGame() {
-        score = 0; frameCount = 0; currentLevel = 1; hasWon = false;
+        score = 0; frameCount = 0; currentLevel = 1; hasWonThisSession = false;
         butchers = []; boosters = []; bombs = []; explosions = [];
         chicken.x = canvas.width / 2; chicken.y = canvas.height / 2;
         chicken.boostTimer = 0;
@@ -471,13 +553,10 @@
             highScoreDisplay.innerText = highScore;
         }
         menu.classList.remove('hidden');
-        document.getElementById('menu-title').innerText = "GAME OVER";
-        document.getElementById('menu-title').className = "text-4xl font-black mb-2 text-red-500";
-        menuContent.innerHTML = `
-            <p class="text-xl mb-2 text-white font-bold">Score: ${score}</p>
-            <p class="text-sm text-gray-400 mb-4">You got caught at Level ${currentLevel}!</p>
-            <div class="btn" onclick="startGame()">Try Again</div>
-        `;
+        document.getElementById('menu-title').innerText = "WASTED";
+        document.getElementById('menu-title').className = "text-3xl font-black mb-4 text-red-500";
+        // Reset settings panel content (to allow retry)
+        setTimeout(() => location.reload(), 2000); // Simple reload for clean state
     }
 </script>
 </body>
